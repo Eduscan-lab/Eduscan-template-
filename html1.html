@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Time In/Out System</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: auto; padding: 20px; background: #fff; margin-top: 30px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h1, h2, h3 { text-align: center; }
+    input, select, button { width: 100%; padding: 10px; margin: 10px 0; }
+    #scanner, #admin-qr { text-align: center; margin: 20px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    #success-animation { display: none; text-align: center; color: green; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <!-- Login -->
+  <div class="container" id="login-container">
+    <h1>Login</h1>
+    <input type="text" id="login-username" placeholder="Username">
+    <input type="password" id="login-password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <p>Don't have an account? <a href="#" onclick="showRegister()">Register here</a></p>
+  </div>
+
+  <!-- Registration -->
+  <div class="container" id="register-container" style="display:none;">
+    <h2>Student Registration</h2>
+    <input type="text" id="reg-username" placeholder="Username">
+    <input type="password" id="reg-password" placeholder="Password">
+    <input type="text" id="reg-grade" placeholder="Grade">
+    <input type="text" id="reg-strand" placeholder="Strand">
+    <button onclick="register()">Register</button>
+    <p>Already have an account? <a href="#" onclick="showLogin()">Login here</a></p>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div class="container" id="admin-dashboard" style="display:none;">
+    <h2>Admin Dashboard</h2>
+    <div id="admin-qr"></div>
+    <p>Scan this QR to Time In/Out</p>
+    <table>
+      <thead><tr><th>Name</th><th>Grade</th><th>Strand</th><th>Time</th><th>Status</th></tr></thead>
+      <tbody id="admin-log-table"></tbody>
+    </table>
+  </div>
+
+  <!-- Student Dashboard -->
+  <div class="container" id="student-dashboard" style="display:none;">
+    <h2>Welcome, <span id="student-name"></span></h2>
+    <p>Grade: <span id="student-grade"></span>, Strand: <span id="student-strand"></span></p>
+    <div id="scanner"></div>
+    <div id="success-animation">Scan successful!</div>
+    <h3>Today's Log</h3>
+    <table>
+      <thead><tr><th>Time</th><th>Status</th></tr></thead>
+      <tbody id="student-log-table"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let users = [{ username: "admin", password: "admin123", isAdmin: true }];
+    let logs = [];
+
+    function showLogin() {
+      document.getElementById('login-container').style.display = 'block';
+      document.getElementById('register-container').style.display = 'none';
+    }
+
+    function showRegister() {
+      document.getElementById('login-container').style.display = 'none';
+      document.getElementById('register-container').style.display = 'block';
+    }
+
+    function register() {
+      const username = document.getElementById('reg-username').value;
+      const password = document.getElementById('reg-password').value;
+      const grade = document.getElementById('reg-grade').value;
+      const strand = document.getElementById('reg-strand').value;
+      if (!username || !password || !grade || !strand) {
+        alert("Please fill out all fields.");
+        return;
+      }
+      users.push({ username, password, grade, strand, isAdmin: false });
+      alert("Registration successful!");
+      showLogin();
+    }
+
+    function login() {
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      const user = users.find(u => u.username === username && u.password === password);
+      if (!user) return alert("Invalid credentials.");
+
+      document.getElementById('login-container').style.display = 'none';
+      document.getElementById('register-container').style.display = 'none';
+
+      if (user.isAdmin) {
+        document.getElementById('admin-dashboard').style.display = 'block';
+        generateAdminQR();
+        updateAdminLog();
+      } else {
+        document.getElementById('student-dashboard').style.display = 'block';
+        document.getElementById('student-name').textContent = user.username;
+        document.getElementById('student-grade').textContent = user.grade;
+        document.getElementById('student-strand').textContent = user.strand;
+        startScanner(user);
+        showStudentLogs(user);
+      }
+    }
+
+    function generateAdminQR() {
+      const container = document.getElementById('admin-qr');
+      container.innerHTML = '';
+      new QRCode(container, {
+        text: "ADMIN_QR_IDENTIFIER",
+        width: 200,
+        height: 200
+      });
+    }
+
+    function startScanner(user) {
+      const scanner = new Html5Qrcode("scanner");
+      scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, content => {
+        if (content === "ADMIN_QR_IDENTIFIER") {
+          const now = new Date();
+          const status = getLastStatus(user) === "Time In" ? "Time Out" : "Time In";
+          logs.push({ user: user.username, grade: user.grade, strand: user.strand, time: now, status });
+          showSuccess();
+          showStudentLogs(user);
+          updateAdminLog();
+        }
+      });
+    }
+
+    function showSuccess() {
+      const anim = document.getElementById("success-animation");
+      anim.style.display = "block";
+      setTimeout(() => anim.style.display = "none", 2000);
+    }
+
+    function getLastStatus(user) {
+      const today = logs.filter(l => l.user === user.username && isToday(new Date(l.time)));
+      return today.length ? today[today.length - 1].status : "Time Out";
+    }
+
+    function isToday(date) {
+      const now = new Date();
+      return date.toDateString() === now.toDateString();
+    }
+
+    function showStudentLogs(user) {
+      const tbody = document.getElementById("student-log-table");
+      tbody.innerHTML = "";
+      logs.filter(l => l.user === user.username && isToday(new Date(l.time)))
+          .forEach(l => {
+            const row = tbody.insertRow();
+            row.insertCell(0).textContent = new Date(l.time).toLocaleTimeString();
+            row.insertCell(1).textContent = l.status;
+          });
+    }
+
+    function updateAdminLog() {
+      const tbody = document.getElementById("admin-log-table");
+      tbody.innerHTML = "";
+      logs.forEach(l => {
+        const row = tbody.insertRow();
+        row.insertCell(0).textContent = l.user;
+        row.insertCell(1).textContent = l.grade;
+        row.insertCell(2).textContent = l.strand;
+        row.insertCell(3).textContent = new Date(l.time).toLocaleString();
+        row.insertCell(4).textContent = l.status;
+      });
+    }
+  </script>
+</body>
+</html>
