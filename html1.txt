@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Time In/Out Registration</title>
+    <style>
+            body { font-family: Arial; background: #f4f4f4; padding: 20px; }
+    .box { max-width: 400px; margin: 20px auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; }
+    input, button, select { width: 100%; margin: 10px 0; padding: 10px; font-size: 16px; }
+    .hide { display: none; }
+    #qrcode { margin: 10px auto; width: 200px; height: 200px; }
+    .log { margin-top: 20px; padding: 10px; background: #eaeaea; border-radius: 5px; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Student Time In/Out Registration</h1>
+    
+    <form id="studentForm">
+        <label for="fullName">Full Name:</label>
+        <input type="text" id="fullName" required><br><br>
+        
+        <label for="grade">Grade:</label>
+        <input type="text" id="grade" required><br><br>
+        
+        <label for="strand">Strand:</label>
+        <select id="strand" required>
+            <option value="ABM">ABM</option>
+            <option value="STEM">STEM</option>
+            <option value="HUMSS">HUMSS</option>
+            <option value="GAS">GAS</option>
+            <option value="ICT">ICT</option>
+            <option value="HE">HE</option>
+        </select><br><br>
+        
+        <button type="submit">Register</button>
+    </form>
+
+    <div id="qrCode" class="hidden">
+        <h2>Admin QR Code</h2>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?data=Admin&size=150x150" alt="Admin QR Code">
+    </div>
+
+    <div id="studentInfo" class="hidden">
+        <h2>Student Information</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Grade</th>
+                    <th>Strand</th>
+                    <th>Time In/Out</th>
+                </tr>
+            </thead>
+            <tbody id="infoTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const studentForm = document.getElementById('studentForm');
+    const infoTableBody = document.getElementById('infoTableBody');
+    const qrCode = document.getElementById('qrCode');
+    const studentInfo = document.getElementById('studentInfo');
+
+    studentForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        const fullName = document.getElementById('fullName').value;
+        const grade = document.getElementById('grade').value;
+        const strand = document.getElementById('strand').value;
+        const timeIn = new Date().toLocaleString();
+
+        const newRow = `<tr>
+                            <td>${fullName}</td>
+                            <td>${grade}</td>
+                            <td>${strand}</td>
+                            <td>${timeIn}</td>
+                        </tr>`;
+        infoTableBody.innerHTML += newRow;
+
+        studentInfo.classList.remove('hidden');
+        qrCode.classList.remove('hidden');
+    });
+</script>
+</body>
+</html>
